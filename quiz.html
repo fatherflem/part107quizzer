@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Part 107 Quizzer</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.4;
+      color: #111;
+    }
+
+    body {
+      margin: 0;
+      background: #f6f7f9;
+      padding: 24px;
+    }
+
+    .card {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      padding: 20px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+
+    #progress {
+      color: #4b5563;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+
+    #question {
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .options label {
+      display: block;
+      margin: 8px 0;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .options input {
+      margin-right: 8px;
+    }
+
+    #figure {
+      margin-top: 14px;
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      display: none;
+    }
+
+    #nextBtn {
+      margin-top: 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    #nextBtn:hover {
+      background: #1d4ed8;
+    }
+
+    .result-item {
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .correct {
+      background: #ecfdf3;
+      border: 1px solid #86efac;
+    }
+
+    .incorrect {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+    }
+
+    #status {
+      margin-top: 12px;
+      color: #b91c1c;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Part 107 Practice Quiz</h1>
+    <div id="quizArea">
+      <div id="progress"></div>
+      <div id="question"></div>
+
+      <form id="optionsForm" class="options">
+        <label><input type="radio" name="answer" value="A" /> <strong>A:</strong> <span id="optA"></span></label>
+        <label><input type="radio" name="answer" value="B" /> <strong>B:</strong> <span id="optB"></span></label>
+        <label><input type="radio" name="answer" value="C" /> <strong>C:</strong> <span id="optC"></span></label>
+      </form>
+
+      <img id="figure" alt="Associated sectional chart" />
+      <div>
+        <button id="nextBtn" type="button">Next</button>
+      </div>
+      <div id="status"></div>
+    </div>
+  </main>
+
+  <script>
+    const CSV_CANDIDATE_PATHS = [
+      '/mnt/data/updated_questions_with_figures.csv',
+      './updated_questions_with_figures.csv'
+    ];
+    const FIGURE_CANDIDATE_PREFIXES = ['/mnt/data/', './'];
+
+    const state = {
+      questions: [],
+      currentIndex: 0,
+      answers: []
+    };
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let value = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            value += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          row.push(value);
+          value = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            i += 1;
+          }
+          row.push(value);
+          value = '';
+
+          if (row.length && row.some((cell) => cell !== '')) {
+            rows.push(row);
+          }
+          row = [];
+        } else {
+          value += char;
+        }
+      }
+
+      if (value.length > 0 || row.length > 0) {
+        row.push(value);
+        if (row.some((cell) => cell !== '')) {
+          rows.push(row);
+        }
+      }
+
+      return rows;
+    }
+
+    function toObjects(rows) {
+      if (!rows.length) return [];
+      const headers = rows[0].map((h) => h.trim());
+      return rows.slice(1).map((row) => {
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = (row[index] || '').trim();
+        });
+        return obj;
+      });
+    }
+
+    function selectedAnswer() {
+      const picked = document.querySelector('input[name="answer"]:checked');
+      return picked ? picked.value : '';
+    }
+
+    function setFigureSource(imgEl, figureFile) {
+      if (!figureFile) {
+        imgEl.removeAttribute('src');
+        imgEl.style.display = 'none';
+        return;
+      }
+
+      let prefixIndex = 0;
+      const tryNextPrefix = () => {
+        if (prefixIndex >= FIGURE_CANDIDATE_PREFIXES.length) {
+          imgEl.removeAttribute('src');
+          imgEl.style.display = 'none';
+          return;
+        }
+
+        const src = `${FIGURE_CANDIDATE_PREFIXES[prefixIndex]}${figureFile}`;
+        prefixIndex += 1;
+        imgEl.src = src;
+        imgEl.style.display = 'block';
+      };
+
+      imgEl.onerror = tryNextPrefix;
+      imgEl.onload = () => {
+        imgEl.onerror = null;
+      };
+      tryNextPrefix();
+    }
+
+    function renderQuestion() {
+      const q = state.questions[state.currentIndex];
+      const total = state.questions.length;
+      document.getElementById('progress').textContent = `Question ${state.currentIndex + 1} of ${total}`;
+      document.getElementById('question').textContent = q['Question'] || '';
+      document.getElementById('optA').textContent = q['Option A'] || '';
+      document.getElementById('optB').textContent = q['Option B'] || '';
+      document.getElementById('optC').textContent = q['Option C'] || '';
+      document.getElementById('status').textContent = '';
+
+      const stored = state.answers[state.currentIndex];
+      document.querySelectorAll('input[name="answer"]').forEach((input) => {
+        input.checked = stored === input.value;
+      });
+
+      const figureImg = document.getElementById('figure');
+      const figureFile = (q['FigureFile'] || '').trim();
+      setFigureSource(figureImg, figureFile);
+
+      document.getElementById('nextBtn').textContent =
+        state.currentIndex === total - 1 ? 'Finish Quiz' : 'Next';
+    }
+
+    function renderResults() {
+      const quizArea = document.getElementById('quizArea');
+      const total = state.questions.length;
+      let score = 0;
+
+      const results = state.questions.map((q, idx) => {
+        const chosen = state.answers[idx] || '(no answer)';
+        const correct = (q['Correct Answer'] || '').trim().toUpperCase();
+        const isCorrect = chosen.toUpperCase() === correct;
+        if (isCorrect) score += 1;
+
+        return {
+          idx,
+          chosen,
+          correct,
+          question: q['Question'] || '',
+          isCorrect
+        };
+      });
+
+      quizArea.innerHTML = `
+        <h2>Your Score: ${score} / ${total}</h2>
+        <p>Review:</p>
+        <div id="resultList"></div>
+      `;
+
+      const list = document.getElementById('resultList');
+      results.forEach((result) => {
+        const div = document.createElement('div');
+        div.className = `result-item ${result.isCorrect ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `
+          <strong>Q${result.idx + 1}:</strong> ${result.question}<br />
+          Your answer: <strong>${result.chosen}</strong> | Correct answer: <strong>${result.correct}</strong>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function nextQuestion() {
+      const answer = selectedAnswer();
+      state.answers[state.currentIndex] = answer;
+
+      if (state.currentIndex < state.questions.length - 1) {
+        state.currentIndex += 1;
+        renderQuestion();
+      } else {
+        renderResults();
+      }
+    }
+
+    async function loadCsvText() {
+      for (const path of CSV_CANDIDATE_PATHS) {
+        try {
+          const response = await fetch(path);
+          if (response.ok) {
+            return await response.text();
+          }
+        } catch (err) {
+          // try next path
+        }
+      }
+      throw new Error(`Could not load CSV from: ${CSV_CANDIDATE_PATHS.join(', ')}`);
+    }
+
+    async function initQuiz() {
+      try {
+        const csvText = await loadCsvText();
+        const rows = parseCSV(csvText);
+        const questions = toObjects(rows).filter((q) => q.Question);
+
+        if (!questions.length) {
+          throw new Error('No questions found in CSV.');
+        }
+
+        state.questions = questions;
+        document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+        renderQuestion();
+      } catch (err) {
+        document.getElementById('quizArea').innerHTML = `
+          <p style="color:#b91c1c;"><strong>Error:</strong> ${err.message}</p>
+          <p>If you opened this file directly with <code>file://</code>, use a small local web server so Fetch can read local files.</p>
+        `;
+      }
+    }
+
+    initQuiz();
+  </script>
+</body>
+</html>
