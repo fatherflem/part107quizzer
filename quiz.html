@@ -7,134 +7,136 @@
   <style>
     :root {
       font-family: Arial, Helvetica, sans-serif;
-      line-height: 1.4;
-      color: #111;
+      color: #111827;
+      line-height: 1.45;
     }
 
     body {
       margin: 0;
-      background: #f6f7f9;
       padding: 24px;
+      background: #f3f4f6;
     }
 
-    .card {
-      max-width: 900px;
+    .quiz-card {
+      max-width: 920px;
       margin: 0 auto;
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
       padding: 20px;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
-      margin-top: 0;
-      font-size: 1.5rem;
+      margin: 0 0 14px;
+      font-size: 1.55rem;
     }
 
     #progress {
+      margin-bottom: 10px;
       color: #4b5563;
-      margin-bottom: 12px;
       font-size: 0.95rem;
     }
 
-    #question {
-      font-weight: 600;
+    #questionText {
       margin-bottom: 12px;
+      font-weight: 600;
+      font-size: 1.05rem;
     }
 
-    .options label {
+    .answers label {
       display: block;
       margin: 8px 0;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
       cursor: pointer;
+      background: #fafafa;
     }
 
-    .options input {
+    .answers input[type='radio'] {
       margin-right: 8px;
     }
 
-    #figure {
+    #questionFigure {
       margin-top: 14px;
       max-width: 100%;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
       display: none;
     }
 
-    #nextBtn {
-      margin-top: 18px;
+    .controls {
+      margin-top: 16px;
+    }
+
+    button {
       border: 0;
       border-radius: 8px;
-      background: #2563eb;
-      color: #fff;
       padding: 10px 16px;
       font-size: 1rem;
+      background: #2563eb;
+      color: white;
       cursor: pointer;
     }
 
-    #nextBtn:hover {
+    button:hover {
       background: #1d4ed8;
     }
 
-    .result-item {
-      padding: 8px;
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
-
-    .correct {
-      background: #ecfdf3;
-      border: 1px solid #86efac;
-    }
-
-    .incorrect {
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-    }
-
-    #status {
-      margin-top: 12px;
+    #message {
+      margin-top: 10px;
+      min-height: 1.1em;
       color: #b91c1c;
+    }
+
+    .result-row {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid;
+    }
+
+    .result-row.correct {
+      background: #ecfdf5;
+      border-color: #86efac;
+    }
+
+    .result-row.incorrect {
+      background: #fef2f2;
+      border-color: #fca5a5;
     }
   </style>
 </head>
 <body>
-  <main class="card">
+  <main class="quiz-card" id="app">
     <h1>Part 107 Practice Quiz</h1>
-    <div id="quizArea">
+    <section id="quizSection">
       <div id="progress"></div>
-      <div id="question"></div>
+      <div id="questionText"></div>
 
-      <form id="optionsForm" class="options">
-        <label><input type="radio" name="answer" value="A" /> <strong>A:</strong> <span id="optA"></span></label>
-        <label><input type="radio" name="answer" value="B" /> <strong>B:</strong> <span id="optB"></span></label>
-        <label><input type="radio" name="answer" value="C" /> <strong>C:</strong> <span id="optC"></span></label>
+      <form id="answerForm" class="answers">
+        <label><input type="radio" name="answer" value="A" /> <strong>A:</strong> <span id="answerA"></span></label>
+        <label><input type="radio" name="answer" value="B" /> <strong>B:</strong> <span id="answerB"></span></label>
+        <label><input type="radio" name="answer" value="C" /> <strong>C:</strong> <span id="answerC"></span></label>
       </form>
 
-      <img id="figure" alt="Associated sectional chart" />
-      <div>
-        <button id="nextBtn" type="button">Next</button>
+      <img id="questionFigure" alt="Sectional chart for this question" />
+
+      <div class="controls">
+        <button type="button" id="nextButton">Next</button>
       </div>
-      <div id="status"></div>
-    </div>
+      <div id="message"></div>
+    </section>
   </main>
 
   <script>
-    const CSV_CANDIDATE_PATHS = [
-      '/mnt/data/updated_questions_with_figures.csv',
-      './updated_questions_with_figures.csv'
-    ];
-    const FIGURE_CANDIDATE_PREFIXES = ['/mnt/data/', './'];
-
     const state = {
       questions: [],
       currentIndex: 0,
-      answers: []
+      responses: []
     };
 
-    function parseCSV(text) {
+    function parseCsv(text) {
       const rows = [];
       let row = [];
       let value = '';
@@ -160,8 +162,7 @@
           }
           row.push(value);
           value = '';
-
-          if (row.length && row.some((cell) => cell !== '')) {
+          if (row.some((cell) => cell !== '')) {
             rows.push(row);
           }
           row = [];
@@ -170,7 +171,7 @@
         }
       }
 
-      if (value.length > 0 || row.length > 0) {
+      if (value.length || row.length) {
         row.push(value);
         if (row.some((cell) => cell !== '')) {
           rows.push(row);
@@ -180,115 +181,98 @@
       return rows;
     }
 
-    function toObjects(rows) {
-      if (!rows.length) return [];
-      const headers = rows[0].map((h) => h.trim());
-      return rows.slice(1).map((row) => {
-        const obj = {};
-        headers.forEach((header, index) => {
-          obj[header] = (row[index] || '').trim();
-        });
-        return obj;
-      });
-    }
-
-    function selectedAnswer() {
-      const picked = document.querySelector('input[name="answer"]:checked');
-      return picked ? picked.value : '';
-    }
-
-    function setFigureSource(imgEl, figureFile) {
-      if (!figureFile) {
-        imgEl.removeAttribute('src');
-        imgEl.style.display = 'none';
-        return;
+    function mapRowsToQuestions(rows) {
+      if (!rows.length) {
+        return [];
       }
 
-      let prefixIndex = 0;
-      const tryNextPrefix = () => {
-        if (prefixIndex >= FIGURE_CANDIDATE_PREFIXES.length) {
-          imgEl.removeAttribute('src');
-          imgEl.style.display = 'none';
-          return;
-        }
+      const headers = rows[0].map((header) => header.trim());
+      return rows.slice(1).map((row) => {
+        const question = {};
+        headers.forEach((header, index) => {
+          question[header] = (row[index] || '').trim();
+        });
+        return question;
+      }).filter((question) => question.Question);
+    }
 
-        const src = `${FIGURE_CANDIDATE_PREFIXES[prefixIndex]}${figureFile}`;
-        prefixIndex += 1;
-        imgEl.src = src;
-        imgEl.style.display = 'block';
-      };
-
-      imgEl.onerror = tryNextPrefix;
-      imgEl.onload = () => {
-        imgEl.onerror = null;
-      };
-      tryNextPrefix();
+    function getSelectedAnswer() {
+      const selected = document.querySelector('input[name="answer"]:checked');
+      return selected ? selected.value : '';
     }
 
     function renderQuestion() {
-      const q = state.questions[state.currentIndex];
+      const question = state.questions[state.currentIndex];
       const total = state.questions.length;
-      document.getElementById('progress').textContent = `Question ${state.currentIndex + 1} of ${total}`;
-      document.getElementById('question').textContent = q['Question'] || '';
-      document.getElementById('optA').textContent = q['Option A'] || '';
-      document.getElementById('optB').textContent = q['Option B'] || '';
-      document.getElementById('optC').textContent = q['Option C'] || '';
-      document.getElementById('status').textContent = '';
 
-      const stored = state.answers[state.currentIndex];
+      document.getElementById('progress').textContent = `Question ${state.currentIndex + 1} of ${total}`;
+      document.getElementById('questionText').textContent = question.Question || '';
+      document.getElementById('answerA').textContent = question['Option A'] || '';
+      document.getElementById('answerB').textContent = question['Option B'] || '';
+      document.getElementById('answerC').textContent = question['Option C'] || '';
+      document.getElementById('message').textContent = '';
+
+      const saved = state.responses[state.currentIndex] || '';
       document.querySelectorAll('input[name="answer"]').forEach((input) => {
-        input.checked = stored === input.value;
+        input.checked = input.value === saved;
       });
 
-      const figureImg = document.getElementById('figure');
-      const figureFile = (q['FigureFile'] || '').trim();
-      setFigureSource(figureImg, figureFile);
+      const figureFile = (question.FigureFile || '').trim();
+      const figure = document.getElementById('questionFigure');
+      if (figureFile) {
+        figure.src = `./${figureFile}`;
+        figure.style.display = 'block';
+      } else {
+        figure.removeAttribute('src');
+        figure.style.display = 'none';
+      }
 
-      document.getElementById('nextBtn').textContent =
-        state.currentIndex === total - 1 ? 'Finish Quiz' : 'Next';
+      document.getElementById('nextButton').textContent = state.currentIndex === total - 1 ? 'Finish' : 'Next';
     }
 
     function renderResults() {
-      const quizArea = document.getElementById('quizArea');
-      const total = state.questions.length;
       let score = 0;
 
-      const results = state.questions.map((q, idx) => {
-        const chosen = state.answers[idx] || '(no answer)';
-        const correct = (q['Correct Answer'] || '').trim().toUpperCase();
-        const isCorrect = chosen.toUpperCase() === correct;
-        if (isCorrect) score += 1;
+      const results = state.questions.map((question, index) => {
+        const userAnswer = state.responses[index] || '(no answer)';
+        const correctAnswer = (question['Correct Answer'] || '').toUpperCase();
+        const isCorrect = userAnswer.toUpperCase() === correctAnswer;
+
+        if (isCorrect) {
+          score += 1;
+        }
 
         return {
-          idx,
-          chosen,
-          correct,
-          question: q['Question'] || '',
+          index,
+          questionText: question.Question,
+          userAnswer,
+          correctAnswer,
           isCorrect
         };
       });
 
-      quizArea.innerHTML = `
-        <h2>Your Score: ${score} / ${total}</h2>
-        <p>Review:</p>
-        <div id="resultList"></div>
+      const quizSection = document.getElementById('quizSection');
+      quizSection.innerHTML = `
+        <h2>Your Score: ${score} / ${state.questions.length}</h2>
+        <p>Summary of answers:</p>
+        <div id="resultsContainer"></div>
       `;
 
-      const list = document.getElementById('resultList');
+      const resultsContainer = document.getElementById('resultsContainer');
       results.forEach((result) => {
-        const div = document.createElement('div');
-        div.className = `result-item ${result.isCorrect ? 'correct' : 'incorrect'}`;
-        div.innerHTML = `
-          <strong>Q${result.idx + 1}:</strong> ${result.question}<br />
-          Your answer: <strong>${result.chosen}</strong> | Correct answer: <strong>${result.correct}</strong>
+        const row = document.createElement('div');
+        row.className = `result-row ${result.isCorrect ? 'correct' : 'incorrect'}`;
+        row.innerHTML = `
+          <strong>Q${result.index + 1}.</strong> ${result.questionText}<br>
+          Your answer: <strong>${result.userAnswer}</strong><br>
+          Correct answer: <strong>${result.correctAnswer}</strong>
         `;
-        list.appendChild(div);
+        resultsContainer.appendChild(row);
       });
     }
 
-    function nextQuestion() {
-      const answer = selectedAnswer();
-      state.answers[state.currentIndex] = answer;
+    function handleNext() {
+      state.responses[state.currentIndex] = getSelectedAnswer();
 
       if (state.currentIndex < state.questions.length - 1) {
         state.currentIndex += 1;
@@ -298,42 +282,31 @@
       }
     }
 
-    async function loadCsvText() {
-      for (const path of CSV_CANDIDATE_PATHS) {
-        try {
-          const response = await fetch(path);
-          if (response.ok) {
-            return await response.text();
-          }
-        } catch (err) {
-          // try next path
-        }
-      }
-      throw new Error(`Could not load CSV from: ${CSV_CANDIDATE_PATHS.join(', ')}`);
-    }
-
-    async function initQuiz() {
+    async function init() {
       try {
-        const csvText = await loadCsvText();
-        const rows = parseCSV(csvText);
-        const questions = toObjects(rows).filter((q) => q.Question);
-
-        if (!questions.length) {
-          throw new Error('No questions found in CSV.');
+        const response = await fetch('./updated_questions_with_figures.csv');
+        if (!response.ok) {
+          throw new Error(`Unable to load CSV (${response.status})`);
         }
 
-        state.questions = questions;
-        document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+        const csvText = await response.text();
+        state.questions = mapRowsToQuestions(parseCsv(csvText));
+
+        if (!state.questions.length) {
+          throw new Error('No questions were found in the CSV.');
+        }
+
+        document.getElementById('nextButton').addEventListener('click', handleNext);
         renderQuestion();
-      } catch (err) {
-        document.getElementById('quizArea').innerHTML = `
-          <p style="color:#b91c1c;"><strong>Error:</strong> ${err.message}</p>
-          <p>If you opened this file directly with <code>file://</code>, use a small local web server so Fetch can read local files.</p>
+      } catch (error) {
+        document.getElementById('quizSection').innerHTML = `
+          <p style="color:#b91c1c;"><strong>Error:</strong> ${error.message}</p>
+          <p>If you opened this page with <code>file://</code>, use a local web server so <code>fetch()</code> can read files.</p>
         `;
       }
     }
 
-    initQuiz();
+    init();
   </script>
 </body>
 </html>
