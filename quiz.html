@@ -238,34 +238,50 @@
     }
 
     function normalizeForComparison(value) {
-      return (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      return (value || '').replace(/_/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
     }
 
-    function getCorrectAnswerLetter(question) {
-      const raw = (question['Correct Answer'] || '').trim();
-      const upper = raw.toUpperCase();
-      if (['A', 'B', 'C'].includes(upper)) return upper;
+    function fixQuestionRow(row) {
+      if (row['Option A'] && row['Option A'].startsWith(' ')) {
+        row.Question = (row.Question || '') + row['Option A'];
+        row['Option A'] = row['Option B'];
+        row['Option B'] = row['Option C'];
+        row['Option C'] = row['Correct Answer'] || '';
+        row['Correct Answer'] = '';
+      }
+      return row;
+    }
 
-      const normalizedCorrect = normalizeForComparison(raw);
-      for (const optionLetter of ['A', 'B', 'C']) {
-        if (normalizeForComparison(question[`Option ${optionLetter}`]) === normalizedCorrect) {
-          return optionLetter;
+    function computeCorrectAnswerLetter(row) {
+      let correct = (row['Correct Answer'] || '').trim().toUpperCase();
+      if (!['A', 'B', 'C'].includes(correct)) {
+        const target = normalizeForComparison(row['Correct Answer']);
+        for (const letter of ['A', 'B', 'C']) {
+          const optVal = normalizeForComparison(row[`Option ${letter}`]);
+          if (optVal === target && target) {
+            correct = letter;
+            break;
+          }
         }
       }
-
-      return '';
+      row['Correct Answer'] = ['A', 'B', 'C'].includes(correct) ? correct : '';
+      return row['Correct Answer'];
     }
 
     function mapRowsToQuestions(rows) {
-      return mapRowsToObjects(rows).filter((question) => Boolean(
+      return mapRowsToObjects(rows).map((question) => {
+        const fixed = fixQuestionRow({ ...question });
+        const computedCorrectAnswer = computeCorrectAnswerLetter(fixed);
+        return {
+          ...fixed,
+          computedCorrectAnswer
+        };
+      }).filter((question) => Boolean(
         question.Question &&
         question['Option A'] &&
         question['Option B'] &&
         question['Option C']
-      )).map((question) => ({
-        ...question,
-        computedCorrectAnswer: getCorrectAnswerLetter(question)
-      }));
+      ));
     }
 
     function mapRowsToExplanations(rows) {
@@ -289,6 +305,7 @@
         const correctAnswer = question.computedCorrectAnswer || '';
 
         if (!userAnswer) return counts;
+        if (!correctAnswer) return counts;
         if (userAnswer === correctAnswer) counts.correct += 1;
         else counts.wrong += 1;
 
@@ -353,6 +370,11 @@
         return;
       }
 
+      if (!correct) {
+        showMessage('Answer recorded (this question has no answer key).', true);
+        return;
+      }
+
       showMessage(selected === correct ? 'Correct' : 'Incorrect', selected === correct);
     }
 
@@ -364,7 +386,9 @@
       const explanationEl = document.getElementById('explanation');
 
       let explanationText = explanationBase;
-      if (selected && selected !== correct) {
+      if (!correct) {
+        explanationText += ' No answer key was found for this question, so your response is recorded without scoring.';
+      } else if (selected && selected !== correct) {
         explanationText += ` Your selected answer (${selected}: ${getOptionText(question, selected)}) is incorrect because the correct answer is ${correct}: ${getOptionText(question, correct)}.`;
       } else if (selected && selected === correct) {
         explanationText += ` You selected ${selected}, which is correct.`;
@@ -378,22 +402,25 @@
       const results = state.questions.map((question, index) => {
         const userAnswer = state.responses[index] || '(no answer)';
         const correctAnswer = question.computedCorrectAnswer || '';
-        const isCorrect = userAnswer.toUpperCase() === correctAnswer;
-        if (isCorrect) score += 1;
+        const isScored = Boolean(correctAnswer);
+        const isCorrect = !isScored || userAnswer.toUpperCase() === correctAnswer;
+        if (isScored && isCorrect) score += 1;
 
         return {
           index,
           questionText: question.Question,
           userAnswer,
           correctAnswer,
-          isCorrect
+          isCorrect,
+          isScored
         };
       });
 
-      const wrong = state.questions.length - score;
+      const scoredTotal = results.filter((result) => result.isScored).length;
+      const wrong = scoredTotal - score;
       const quizSection = document.getElementById('quizSection');
       quizSection.innerHTML = `
-        <h2>Your Score: ${score} / ${state.questions.length}</h2>
+        <h2>Your Score: ${score} / ${scoredTotal}</h2>
         <p><strong>Right:</strong> ${score} &nbsp; <strong>Wrong:</strong> ${wrong}</p>
         <p>Summary of answers:</p>
         <div id="resultsContainer"></div>
@@ -406,7 +433,7 @@
         row.innerHTML = `
           <strong>Q${result.index + 1}.</strong> ${result.questionText}<br>
           Your answer: <strong>${result.userAnswer}</strong><br>
-          Correct answer: <strong>${result.correctAnswer}</strong>
+          Correct answer: <strong>${result.isScored ? result.correctAnswer : '(not provided)'}</strong>
         `;
         resultsContainer.appendChild(row);
       });
@@ -438,7 +465,7 @@
       if (Array.isArray(preloadedQuestions) && preloadedExplanations && typeof preloadedExplanations === 'object') {
         state.questions = preloadedQuestions.map((question) => ({
           ...question,
-          computedCorrectAnswer: getCorrectAnswerLetter(question)
+          computedCorrectAnswer: computeCorrectAnswerLetter(fixQuestionRow({ ...question }))
         }));
         state.explanations = new Map(Object.entries(preloadedExplanations));
         return;
