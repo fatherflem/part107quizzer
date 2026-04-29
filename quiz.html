@@ -238,7 +238,12 @@
     }
 
     function normalizeForComparison(value) {
-      return (value || '').replace(/_/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+      return (value || '')
+        .replace(/_/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
     }
 
     function fixQuestionRow(row) {
@@ -294,7 +299,8 @@
       const explanationMap = new Map();
       mapRowsToObjects(rows).forEach((item) => {
         if (item.Question) {
-          explanationMap.set(item.Question, item.Explanation || 'No explanation available for this question.');
+          const key = normalizeForComparison(item.Question);
+          explanationMap.set(key, item.Explanation || 'No explanation available for this question.');
         }
       });
       return explanationMap;
@@ -386,7 +392,7 @@
 
     function handleExplain() {
       const question = state.questions[state.currentIndex];
-      const explanationBase = state.explanations.get(question.Question) || 'No explanation available for this question.';
+      const explanationBase = state.explanations.get(normalizeForComparison(question.Question)) || 'No explanation available for this question.';
       const selected = (state.responses[state.currentIndex] || getSelectedAnswer() || '').toUpperCase();
       const correct = question.computedCorrectAnswer || '';
       const explanationEl = document.getElementById('explanation');
@@ -473,7 +479,12 @@
           ...question,
           computedCorrectAnswer: computeCorrectAnswerLetter(fixQuestionRow({ ...question }))
         }));
-        state.explanations = new Map(Object.entries(preloadedExplanations));
+        state.explanations = new Map(
+          Object.entries(preloadedExplanations).map(([questionText, explanationText]) => ([
+            normalizeForComparison(questionText),
+            explanationText || 'No explanation available for this question.'
+          ]))
+        );
         return;
       }
 
