@@ -203,7 +203,16 @@
           question[header] = (row[index] || '').trim();
         });
         return question;
-      }).filter((question) => question.Question);
+      }).filter((question) => {
+        const correctAnswer = (question['Correct Answer'] || '').trim().toUpperCase();
+        return Boolean(
+          question.Question &&
+          question['Option A'] &&
+          question['Option B'] &&
+          question['Option C'] &&
+          ['A', 'B', 'C'].includes(correctAnswer)
+        );
+      });
     }
 
     function getSelectedAnswer() {
