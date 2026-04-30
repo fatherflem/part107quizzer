@@ -13,6 +13,75 @@ function renderQuestion(){const question=state.questions[state.currentIndex];con
 check.onclick=()=>{const selected=document.querySelector('input[name=ans]:checked')?.value;if(!selected)return;state.responses[state.currentIndex]=selected;feedback.textContent=selected===question['Correct Answer']?'Correct':'Incorrect';};
 explain.onclick=()=>{const correct=question['Correct Answer'];const correctText=question[`Option ${correct}`];const exp=EXPLANATIONS[question.Question]||EXPLANATIONS[Object.keys(EXPLANATIONS).find(k=>normalizeForComparison(k)===normalizedQuestion)]||'';feedback.innerHTML=`<p>Correct answer: ${correct} — ${correctText}</p><p>${exp}</p>`;};
 next.onclick=()=>{state.currentIndex++;if(state.currentIndex>=state.questions.length){const score=state.responses.reduce((acc,r,i)=>acc+(r===state.questions[i]['Correct Answer']),0);app.innerHTML=`<h2>Final score: ${score}/${state.questions.length}</h2><button id=restart>Restart</button>`;restart.onclick=renderStart;return;}renderQuestion();};}
-const errors=validateQuestions(QUESTIONS);if(errors.length){console.error(errors);app.innerHTML='<h2>Validation Errors</h2><pre>'+errors.join('
-')+'</pre>';}else{renderStart();}
+function showValidationErrors(errors) {
+  console.error('Question validation errors:', errors);
+
+  app.innerHTML = '';
+
+  const wrapper = document.createElement('main');
+  wrapper.style.fontFamily = 'Arial, sans-serif';
+  wrapper.style.padding = '2rem';
+
+  const title = document.createElement('h1');
+  title.textContent = 'Part 107 Practice Quiz';
+
+  const heading = document.createElement('h2');
+  heading.textContent = 'Validation Errors';
+  heading.style.color = '#b91c1c';
+
+  const message = document.createElement('p');
+  message.textContent = 'The quiz data has problems that must be fixed before the quiz can start.';
+
+  const pre = document.createElement('pre');
+  pre.textContent = errors.join(String.fromCharCode(10));
+  pre.style.whiteSpace = 'pre-wrap';
+  pre.style.background = '#fee2e2';
+  pre.style.padding = '1rem';
+  pre.style.borderRadius = '8px';
+
+  wrapper.appendChild(title);
+  wrapper.appendChild(heading);
+  wrapper.appendChild(message);
+  wrapper.appendChild(pre);
+  app.appendChild(wrapper);
+}
+
+function boot() {
+  try {
+    const errors = validateQuestions(QUESTIONS);
+
+    if (errors.length) {
+      showValidationErrors(errors);
+      return;
+    }
+
+    renderStart();
+  } catch (error) {
+    console.error('Startup error:', error);
+
+    document.body.innerHTML = '';
+
+    const wrapper = document.createElement('main');
+    wrapper.style.fontFamily = 'Arial, sans-serif';
+    wrapper.style.padding = '2rem';
+
+    const title = document.createElement('h1');
+    title.textContent = 'Part 107 Practice Quiz';
+
+    const message = document.createElement('p');
+    message.style.color = '#b91c1c';
+    message.innerHTML = `<strong>Startup error:</strong> ${error.message}`;
+
+    const pre = document.createElement('pre');
+    pre.textContent = error.stack || String(error);
+    pre.style.whiteSpace = 'pre-wrap';
+
+    wrapper.appendChild(title);
+    wrapper.appendChild(message);
+    wrapper.appendChild(pre);
+    document.body.appendChild(wrapper);
+  }
+}
+
+boot();
 </script></body></html>
