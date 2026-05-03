@@ -1418,6 +1418,110 @@ function normalizeForComparison(value) {
     .toLowerCase();
 }
 
+const EXPLANATION_OVERRIDES = {
+  [normalizeForComparison("To conduct Category 1 operations, a remote pilot in command must use a small unmanned aircraft that weighs")]:
+    "Category 1 operations require a small unmanned aircraft that weighs 0.55 pounds or less on takeoff and throughout the operation, including everything on board or otherwise attached to the aircraft. 0.65 pounds or less and 0.75 pounds or less are incorrect because they exceed the Category 1 limit.",
+  [normalizeForComparison("You have been hired as a remote pilot by a local TV news station to film breaking news with a small UA. You expressed a safety concern and the station manager has instructed you to “fly first, ask questions later.” What type of hazardous attitude does this attitude represent?")]:
+    "“Fly first, ask questions later” is impulsivity: acting without thinking through the consequences. Machismo is taking risks to impress others. Invulnerability is believing accidents will not happen to you.",
+  [normalizeForComparison("A TV station manager tells a remote pilot to ‘fly first, ask questions later.’ What hazardous attitude does this represent?")]:
+    "“Fly first, ask questions later” is impulsivity: acting without thinking through the consequences. Machismo is taking risks to impress others. Invulnerability is believing accidents will not happen to you.",
+  [normalizeForComparison("Safety is an important element for a remote pilot to consider prior to operating an unmanned aircraft system. To prevent the final “link” in the accident chain, a remote pilot must consider which methodology?")]:
+    "Risk management is the process of identifying hazards, assessing risk, and making decisions that break the accident chain before the final unsafe event occurs. Crew Resource Management focuses on using people and communication effectively. A Safety Management System is a broader organizational safety program, not the specific methodology being asked for here.",
+  [normalizeForComparison("To prevent the final link in the accident chain, a remote pilot must consider which methodology?")]:
+    "Risk management is the process of identifying hazards, assessing risk, and making decisions that break the accident chain before the final unsafe event occurs. Crew Resource Management focuses on using people and communication effectively. A Safety Management System is a broader organizational safety program, not the specific methodology being asked for here.",
+  [normalizeForComparison("According to 14 CFR part 107, what is required to operate a small UA within 30 minutes after official sunset?")]:
+    "Within 30 minutes after official sunset is civil twilight. Under Part 107, the small unmanned aircraft must use anti-collision lighting visible for at least 3 statute miles. Being in a rural area and using a transponder are not the Part 107 requirement for this situation.",
+  [normalizeForComparison("To ensure that the unmanned aircraft center of gravity (CG) limits are not exceeded, follow the aircraft loading instructions specified in the")]:
+    "Use the aircraft-specific loading instructions in the Pilot’s Operating Handbook or UAS Flight Manual. Those documents tell the pilot how to keep the aircraft within its center-of-gravity limits. The AIM and general weight-and-balance references may provide background, but they are not the aircraft-specific loading authority here.",
+  [normalizeForComparison("To ensure the unmanned aircraft’s center of gravity limits are not exceeded, follow the")]:
+    "Use the aircraft-specific loading instructions in the Pilot’s Operating Handbook or UAS Flight Manual. Those documents tell the pilot how to keep the aircraft within its center-of-gravity limits. The AIM and general weight-and-balance references may provide background, but they are not the aircraft-specific loading authority here.",
+  [normalizeForComparison("What does the line of latitude at area 4 measure?")]:
+    "Lines of latitude measure degrees north and south of the equator. Longitude measures east and west of the Prime Meridian, which passes through Greenwich, England.",
+  [normalizeForComparison("Under what condition should the operator of a small UA establish scheduled maintenance protocol?")]:
+    "If the manufacturer does not provide a maintenance schedule, the operator should establish a scheduled maintenance protocol. Assuming no maintenance schedule is needed or waiting for an accident is unsafe.",
+  [normalizeForComparison("According to 14 CFR part 48, when would a small UA owner not be permitted to register it?")]:
+    "A small UA owner who is less than 13 years old may not register the aircraft directly. In that case, another eligible person must complete the registration. A driver’s license is not the deciding requirement.",
+  [normalizeForComparison("When would a small UA owner not be permitted to register it?")]:
+    "A small UA owner who is less than 13 years old may not register the aircraft directly. In that case, another eligible person must complete the registration. A driver’s license is not the deciding requirement.",
+  [normalizeForComparison("When using a small UA in a commercial operation, who is responsible for briefing the participants about emergency procedures?")]:
+    "The remote PIC is responsible for ensuring the operation is conducted safely, including briefing participants about emergency procedures. A visual observer may help, but the responsibility belongs to the remote PIC.",
+  [normalizeForComparison("Who is responsible for briefing participants about emergency procedures when using a small UA in a commercial operation?")]:
+    "The remote PIC is responsible for ensuring the operation is conducted safely, including briefing participants about emergency procedures. A visual observer may help, but the responsibility belongs to the remote PIC.",
+  [normalizeForComparison("When preparing for a night flight, what should an sUAS pilot be aware of after assembling and conducting a preflight of an aircraft while using a bright flashlight or work light?")]:
+    "Bright light can disrupt night adaptation. A pilot’s eyes can take about 30 minutes to fully adapt to darkness, so using a bright flashlight during preflight can reduce night vision for the beginning of the flight.",
+  [normalizeForComparison("What are the current conditions for Chicago Midway Airport (KMDW)?")]:
+    "Read the METAR elements directly: ceiling/sky condition, visibility, and weather. In this item, the keyed answer gives 700 feet overcast, visibility 1½ statute miles, and rain. The other choices misread the ceiling, visibility, or precipitation intensity.",
+  [normalizeForComparison("You have received an outlook briefing from flight service through 1800wxbrief.com. The briefing indicates you can expect a low-level temperature inversion with high relative humidity. What weather conditions would you expect?")]:
+    "A low-level temperature inversion with high relative humidity commonly produces smooth air with poor visibility, fog, haze, or low clouds. Turbulence and showery precipitation are more typical of unstable air.",
+  [normalizeForComparison("While monitoring the Cooperstown CTAF you hear an aircraft announce that they are midfield left downwind to runway 13. Where would the aircraft be relative to the runway?")]:
+    "Runway 13 is oriented roughly southeast. In a standard left traffic pattern, the downwind leg is flown parallel to the runway on the left side of the landing direction. That places the aircraft east of the runway.",
+  [normalizeForComparison("While monitoring the Cooperstown CTAF you hear an aircraft announce that they are midfield left downwind to RWY 13. Where would the aircraft be relative to the runway?")]:
+    "Runway 13 is oriented roughly southeast. In a standard left traffic pattern, the downwind leg is flown parallel to the runway on the left side of the landing direction. That places the aircraft east of the runway.",
+  [normalizeForComparison("The chart shows a gray line with “VR1667, VR1617, VR1638, and VR1668.” Could this area present a hazard to the operations of a small UA?")]:
+    "VR routes are military training routes. They can present a hazard to small UA operations because military aircraft may operate at high speed and low altitude, including at or below 1,500 feet AGL.",
+  [normalizeForComparison("A sectional chart shows VR1667, VR1617, VR1638 and VR1668. Could this area present a hazard to small UA operations?")]:
+    "VR routes are military training routes. They can present a hazard to small UA operations because military aircraft may operate at high speed and low altitude, including at or below 1,500 feet AGL."
+};
+
+function getCorrectAnswerInfo(question) {
+  const correctLetter = question["Correct Answer"];
+  const correctText = question[`Option ${correctLetter}`];
+  return { correctLetter, correctText };
+}
+
+function cleanExplanationText(text) {
+  return (text || "")
+    .replace(/^The correct answer is .*?(?:\.\s+|$)/i, "")
+    .replace(/^This answer is correct based on FAA regulations or aeronautical principles applicable to the situation described in the question\.\s*/i, "")
+    .replace(/The other options .*? are incorrect because they do not align with the requirements or facts described in the corresponding regulation or concept\.?/gi, "")
+    .replace(/The other choices do not match the FAA rule, chart interpretation, or aeronautical concept tested by this question\.?/gi, "")
+    .trim();
+}
+
+function getExplanationForQuestion(question) {
+  const key = normalizeForComparison(question.Question);
+  if (EXPLANATION_OVERRIDES[key]) {
+    return EXPLANATION_OVERRIDES[key];
+  }
+  const raw = EXPLANATIONS[key] || "";
+  const cleaned = cleanExplanationText(raw);
+  if (cleaned) {
+    return cleaned;
+  }
+  const { correctLetter, correctText } = getCorrectAnswerInfo(question);
+  return `This question is keyed to ${correctLetter}: ${correctText}. Review the wording carefully and compare it with the other answer choices.`;
+}
+
+function auditExplanationConsistency(questions) {
+  const warnings = [];
+  questions.forEach((q, index) => {
+    const n = index + 1;
+    const key = normalizeForComparison(q.Question);
+    const raw = EXPLANATIONS[key] || "";
+    const correctLetter = q["Correct Answer"];
+    const correctText = q[`Option ${correctLetter}`] || "";
+    const match = raw.match(/The correct answer is\s+(.+?)(?:\. This answer|\. The other|$)/i);
+    if (!match) return;
+    const claimed = normalizeForComparison(match[1]);
+    const correctLetterNorm = normalizeForComparison(correctLetter);
+    const correctTextNorm = normalizeForComparison(correctText);
+    const matchesCorrect =
+      claimed === correctLetterNorm ||
+      claimed.startsWith(`${correctLetterNorm} `) ||
+      claimed.includes(correctTextNorm) ||
+      correctTextNorm.includes(claimed);
+    if (!matchesCorrect) {
+      warnings.push(
+        `Q${n}: explanation may contradict answer key. Key says ${correctLetter}: ${correctText}. Explanation says "${match[1]}".`
+      );
+    }
+  });
+  if (warnings.length) {
+    console.warn("Explanation consistency warnings:", warnings);
+  }
+  return warnings;
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -1582,23 +1686,23 @@ function handleCheckAnswer() {
 
 function handleExplain() {
   const question = state.questions[state.currentIndex];
-  const selected = (state.responses[state.currentIndex] || getSelectedAnswer() || '').toUpperCase();
-  const correct = question["Correct Answer"];
-  const correctText = getOptionText(question, correct);
-  const normalizedQuestion = normalizeForComparison(question.Question);
-  const explanationBase = EXPLANATIONS[normalizedQuestion] || `The correct answer is ${correct}: ${correctText}.`;
-  const explanationEl = document.getElementById('explanation');
-
-  let text = explanationBase;
-  text += `\n\nCorrect answer: ${correct}: ${correctText}.`;
-
-  if (selected && selected !== correct) {
-    text += `\n\nYour selected answer (${selected}: ${getOptionText(question, selected)}) is incorrect.`;
-  } else if (selected && selected === correct) {
-    text += `\n\nYou selected ${selected}, which is correct.`;
+  const selected = getSelectedAnswer();
+  const { correctLetter, correctText } = getCorrectAnswerInfo(question);
+  const selectedText = selected ? question[`Option ${selected}`] : "";
+  const explanationBase = getExplanationForQuestion(question);
+  const parts = [];
+  if (explanationBase) {
+    parts.push(explanationBase);
   }
-
-  explanationEl.textContent = text;
+  parts.push(`Correct answer: ${correctLetter}: ${correctText}.`);
+  if (selected) {
+    if (selected === correctLetter) {
+      parts.push(`You selected ${selected}, which is correct.`);
+    } else {
+      parts.push(`You selected ${selected}: ${selectedText}. That is not the keyed answer for this question.`);
+    }
+  }
+  document.getElementById("explanation").textContent = parts.join("\n\n");
 }
 
 function handleNext() {
@@ -1650,6 +1754,7 @@ function renderResults() {
 
 function boot() {
   try {
+    auditExplanationConsistency(QUESTIONS);
     const errors = validateQuestions(QUESTIONS);
     if (errors.length) {
       showValidationErrors(errors);
